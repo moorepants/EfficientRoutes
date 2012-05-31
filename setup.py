@@ -5,7 +5,7 @@ setup(
     version='0.1.0dev',
     author=['Jason Keith Moore', 'Mont Hubbard'],
     author_email=['moorepants@gmail.com', 'mhubbard@ucdavis.edu'],
-    packages=['efficientroutes', 'efficientroutes.test'],
+    packages=['efficientroutes', 'efficientroutes.tests'],
     url='http://github.com/moorepants/EfficientRoutes',
     license='LICENSE.txt',
     description='Compares bicycle routes based on energy and time consumption.',

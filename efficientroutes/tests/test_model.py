@@ -1,6 +1,6 @@
 import numpy as np
 
-import model
+from efficientroutes import model
 
 eps = 1e-15
 
@@ -36,3 +36,33 @@ def test_Bicyclist():
         np.cos(angle)) < eps
     assert (bicyclist.max_propulsion(speed, Ca, angle) - min(W_max / speed, Ca
         * mass * g * np.cos(angle))) < eps
+
+def test_Route():
+    x = np.linspace(0.0, 100.0, num=100)
+    z = np.sin(x)
+    l = np.hstack((5.0 * np.ones_like(x[:50]), 10.0 * np.ones_like(x[50:])))
+    s = np.array([45.0, 67.8, 92.0])
+    route = model.Route(x, z, l, s)
+
+    assert (route.current_speed_limit(30.0) - 5.0) < eps
+    assert (route.current_speed_limit(60.0) - 10.0) < eps
+
+    ns = route.next_stop(15.0)
+    assert (ns - 45.0) < eps
+    dts = route.distance_to_stop(15.0)
+    assert (dts - 30.0) < eps
+
+    ns = route.next_stop(50.0)
+    assert (ns - 67.8) < eps
+    dts = route.distance_to_stop(50.0)
+    assert (dts - 17.8) < eps
+
+    ns = route.next_stop(70.0)
+    assert (ns - 92.0) < eps
+    dts = route.distance_to_stop(70.0)
+    assert (dts - 22.0) < eps
+
+    ns = route.next_stop(95.0)
+    assert ns is None
+    dts = route.distance_to_stop(95.0)
+    assert dts is None
