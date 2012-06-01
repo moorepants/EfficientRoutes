@@ -67,3 +67,5 @@ Now install and test python-sundials::
    python python-sundials/sundials/test_cv_simple.py
 
 Run the test problems in python-sundials/sundials to see if it works.
+
+http://www.mailinglistarchive.com/html/sage-devel@googlegroups.com/2011-05/msg00171.html
