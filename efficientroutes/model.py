@@ -298,7 +298,7 @@ class Trip(object):
         states : array_like, shape(3,)
             States: [distance, speed, energy]
         switch : list
-            The switch boolean values.
+            The switch boolean values, one for each event.
 
         Returns
         -------
@@ -323,93 +323,138 @@ class Trip(object):
         Fi = self.bicyclist.incline_force(angle)
         Fr = self.bicyclist.rolling_friction(self.route.rollingFrictionCoefficient, speed, angle)
 
-        if sw[0]:
+        if sw[0] is True:
             Fp = 0.0
             Fb = -self.bicyclist.max_brake_force(self.route.adhesionCoefficient, angle)
-        elif speed > speedLimit:
+            power = 0.0
+        elif sw[2] is True:
             Fp = 0.0
             Fb = self.bicyclist.stop_brake_force(speed, speedLimit) - Fd - Fi - Fr
             #FbMax = -self.bicyclist.max_brake_force(self.route.adhesionCoefficient, angle)
             #if Fb < FbMax:
                 #Fb = FbMax
+            power = -(Fd + Fi + Fr) * speed
+            if power < 0.0:
+                power = 0.0
         else:
             Fp = self.bicyclist.max_propulsion(speed, self.route.adhesionCoefficient, angle)
             Fb = 0.0
+            power = Fp * speed
 
         forces = Fp + Fd + Fi + Fr + Fb
         dstates[1] = forces / self.bicyclist.mass
 
         # power
-        dstates[2] = Fp * speed
+        dstates[2] = power
 
         return dstates
 
     def event(self, t, y, sw):
-        """Root is when the it is time to start braking."""
+        """Root is when the it is time to start braking.
+
+        Parameters
+        ----------
+        t : float
+            Current time.
+        y : float
+            Current states.
+        sw : list
+            Current switch values, one for each event.
+
+        Returns
+        -------
+        brake : float
+            This gives the distance to the next point at which braking should
+            start. i.e. The distance required to stop from the current speed
+            subtracted from distance to the next stopping point. When it goes
+            from positive to negative, the brakes should be applied.
+        stop : float
+            This simply returns the value of the speed and is typically used to
+            detect when the speed drops below zero.
+        speeding : float
+            This returns the difference in the speed limit and the current
+            speed. It is used to detect when the bicyclist is speeding.
+
+        """
         distance = y[0]
         speed = y[1]
+
         distToStop = self.distance_to_next_stop(distance)
-        if distToStop is None:
-            ## TODO: this needs work. we basically do not want to return a root
-            # after the last stop sign
-            brake = 1.0
-        else:
-            angle = self.route.current_angle(distance)
-            distToBrake = self.bicyclist.distance_to_stop(speed,
-                    self.route.adhesionCoefficient, angle)
-            brake = distToStop - distToBrake
-        return [brake, speed]
+        angle = self.route.current_angle(distance)
+        distToBrake = self.bicyclist.distance_to_stop(speed,
+                self.route.adhesionCoefficient, angle)
+        brake = distToStop - distToBrake
+
+        stop = speed
+
+        speedLimit = self.route.current_speed_limit(distance)
+        speeding = speedLimit - speed
+
+        return brake, stop, speeding
 
     def solve(self, ):
 
         self.create_stop_list()
+        self.nextStop = self.next_stop()
 
-        # the switch:
-
-        # RHS: right hand side function
-        # ROOT: the event/root function
-        # SW: the initial values of the switch, there should be one for each
-        # root
         solver = sundials.CVodeSolver(RHS=self.rhs, ROOT=self.event, SW=[False,
-            False], abstol = 1.0e-6, reltol = 1.0e-6)
+            False, False], abstol = 1.0e-6, reltol = 1.0e-6)
 
         # The initial conditions such that the rider is riding just below the
         # starting speed limit.
         t0 = 0.0
         y0 = [0., self.route.speedLimit[0] - 0.1, 0.]
-        y0 = [0., 1e-10, 0.]
+        y0 = [0.0, 1e-10, 0.0]
         solver.init(t0, y0)
 
         dt = 1.0 # integration step size
         iterate = solver.iter(t0, dt)
+
+        # collect the data in these lists
         time = [t0]
         stateHistory = [y0]
         brakeLocations = []
-        self.nextStop = self.next_stop()
+
         while True:
             try:
                 t, y = next(iterate)
             except sundials.CVodeRootException, info:
                 #print '-' * 20
-                #print info.SW[0], info.SW[1]
-                # if the braking point is found
-                if info.SW[0] is True and info.SW[1] is False:
+                #print "info", info.SW
+                #print "solver", solver.SW
+                # SW: [brake, stop, speed]
+                # NOTE: The solver.SW can not be overwritten by a list, the
+                # values must be set individually.
+                if info.SW[0] is True:
                     #print "The next stop is at {} meters.".format(self.nextStop)
                     #print "Found brake point at {} meters and speed is {} m/s.".format(info.y[0], info.y[1])
-                    solver.SW[0] = True # brake for stop sign!
-                    #solver.SW[1] = False
+                    solver.SW[0] = True
+                    solver.SW[1] = False
+                    solver.SW[2] = False
                     solver.init(info.t, [info.y[0], info.y[1], info.y[2]])
                     brakeLocations.append(info.y[0])
                     self.nextStop = self.next_stop()
                     time.append(info.t)
                     stateHistory.append([info.y[0], info.y[1], info.y[2]])
-                elif info.SW[0] is False and info.SW[1] is True:
+                elif info.SW[1] is True:
                     #print "The bicyclist has stopped at {} meters, v = {} m/s.".format(info.y[0], info.y[1])
-                    solver.SW[0] = False # stop braking!
-                    #solver.SW[1] = True
+                    solver.SW[0] = False
+                    solver.SW[1] = False
+                    solver.SW[2] = False
                     solver.init(info.t, [info.y[0], 1e-5, info.y[2]])
                     time.append(info.t)
                     stateHistory.append([info.y[0], 0.0, info.y[2]])
+                elif info.SW[2] is True:
+                    #speedLimit = self.route.current_speed_limit(info.y[0])
+                    #print "Speed {} m/s exceeds the speed limit {} m/s".format(info.y[1],
+                        #speedLimit)
+                    solver.SW[0] = False
+                    solver.SW[1] = False
+                    solver.SW[2] = True
+                    solver.init(info.t, [info.y[0], info.y[1], info.y[2]])
+                    time.append(info.t)
+                    stateHistory.append([info.y[0], info.y[1], info.y[2]])
+
                 #print '-' * 20
             except sundials.CVodeError:
                 break
@@ -425,6 +470,7 @@ class Trip(object):
         self.brakeLocations = np.array(brakeLocations)
 
     def stats(self):
+        """Prints basic statistics about the latest solved run."""
         avgSpeed = self.states[:, 1].mean()
         totalDistance = self.states[-1, 0]
         totalEnergy = self.states[-1, 2]
