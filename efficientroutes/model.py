@@ -56,7 +56,6 @@ class Bicyclist(Base):
             raise ValueError('The angle {} is not between -pi/2 and pi/\
                     2.'.format(angle))
 
-
     def weight(self):
         """Returns the combined weight of the bicyclist and bicycle in Newtons."""
         g = 9.81
@@ -333,9 +332,13 @@ class Trip(object):
             #FbMax = -self.bicyclist.max_brake_force(self.route.adhesionCoefficient, angle)
             #if Fb < FbMax:
                 #Fb = FbMax
-            power = -(Fd + Fi + Fr) * speed
-            if power < 0.0:
+
+            if (Fd + Fr + Fi) < 0.0:
+                power = np.min([self.bicyclist.max_propulsion(speed,
+                    self.route.adhesionCoefficient, angle), -(Fd + Fr + Fi)]) * speed
+            elif (Fd + Fr + Fi) > 0.0:
                 power = 0.0
+
         else:
             Fp = self.bicyclist.max_propulsion(speed, self.route.adhesionCoefficient, angle)
             Fb = 0.0
