@@ -40,7 +40,7 @@ bicycleFig.show()
 # Load in the data for the automobile path.
 autoRouteData = np.recfromcsv('../data/columbia_river_crossing_auto.csv')
 autoRoute = Route(autoRouteData['distance'],
-        autoRouteData['elevation'], autoRouteData['speed_limit'])
+        autoRouteData['elevation'], autoRouteData['speed_limit'] - 17.88)
 
 # Setup and compute the results for the trip across the automobile route.
 autoTrip = Trip(bicyclist, autoRoute)

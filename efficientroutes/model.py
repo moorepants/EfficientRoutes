@@ -486,50 +486,95 @@ class Trip(object):
 
         fig, axes = plt.subplots(5, 1, squeeze=True, sharex=True)
 
-        distance = self.states[:, 0]
-        speed = self.states[:, 1]
-        energy = self.states[:, 2]
-        power = np.hstack((0.0, np.diff(energy) / np.diff(self.time)))
+        seconds2hours = 1. / 3600.
 
-        elevation = np.interp(distance, self.route.distance, self.route.elevation)
-        speedLimit = np.interp(distance, self.route.distance, self.route.speedLimit)
+        distance = self.states[:, 0] / 1000.0 # km
+        speed = self.states[:, 1] / 1000.0 / seconds2hours # km/h
+        energy = self.states[:, 2] / 1000.0 # kilojoules
+        power = np.hstack((0.0, np.diff(self.states[:, 2]) / np.diff(self.time))) # watts
 
+        elevation = np.interp(distance, self.route.distance / 1000.0,
+                self.route.elevation) # meters
+        speedLimit = np.interp(distance, self.route.distance / 1000.0,
+                self.route.speedLimit / 1000.0 / seconds2hours) # km/h
 
-        axes[0].plot(self.time, elevation)
+        meters2feet = 3.280839
+        kilometers2miles = 0.621371192
+
+        axes[0].plot(self.time / 60.0, elevation)
         axes[0].set_ylabel('Elevation [m]')
+        axes[0].grid(True)
+        english = axes[0].twinx()
+        english.axis(np.hstack((axes[0].get_xlim(),
+            np.array(axes[0].get_ylim()) *
+            meters2feet)))
+        english.set_ylabel('Elevation [ft]')
 
-        axes[1].plot(self.time, distance)
-        axes[1].set_ylabel('Distance [m]')
+        axes[1].plot(self.time / 60.0, distance)
+        axes[1].set_ylabel('Distance [km]')
+        axes[1].grid(True)
+        english = axes[1].twinx()
+        english.axis(np.hstack((axes[1].get_xlim(),
+            np.array(axes[1].get_ylim()) *
+            kilometers2miles)))
+        english.set_ylabel('Distance [miles]')
 
-        axes[2].plot(self.time, self.states[:, 1], label='_nolabel')
-        axes[2].plot(self.time, speedLimit, label='Speed Limit')
-        axes[2].set_ylabel('Speed [m/s]')
+        axes[2].plot(self.time / 60.0, speed, label='_nolabel')
+        axes[2].plot(self.time / 60.0, speedLimit, label='Speed Limit')
+        axes[2].set_ylabel('Speed [km/h]')
+        axes[2].grid(True)
+        english = axes[2].twinx()
+        english.axis(np.hstack((axes[2].get_xlim(),
+            np.array(axes[2].get_ylim()) *
+            kilometers2miles)))
+        english.set_ylabel('Speed [mph]')
 
         if self.route.stopLocations is not None:
-            timeAtStop = np.interp(self.route.stopLocations, distance, self.time)
+            stopLocations = self.route.stopLocations / 1000.0 # km
+            brakeLocations = self.brakeLocations / 1000.0 # km
+
+            timeAtStop = np.interp(stopLocations, distance, self.time)
             elevationAtStop = np.interp(timeAtStop, self.time, elevation)
             speedAtStop = np.interp(timeAtStop, self.time, speed)
 
-            timeAtBrake = np.interp(self.brakeLocations, distance, self.time)
+            timeAtBrake = np.interp(brakeLocations, distance, self.time)
             elevationAtBrake = np.interp(timeAtBrake, self.time, elevation)
             speedAtBrake = np.interp(timeAtBrake, self.time, speed)
 
-            axes[0].plot(timeAtStop, elevationAtStop, 'or')
-            axes[0].plot(timeAtBrake, elevationAtBrake, 'vy')
+            axes[0].plot(timeAtStop / 60.0, elevationAtStop, 'or')
+            axes[0].plot(timeAtBrake / 60.0, elevationAtBrake, 'vy')
 
-            axes[1].plot(timeAtStop, self.route.stopLocations[:len(timeAtStop)], 'or')
-            axes[1].plot(timeAtBrake, self.route.stopLocations[:len(timeAtBrake)], 'vy')
+            axes[1].plot(timeAtStop / 60.0, self.route.stopLocations[:len(timeAtStop)]
+                    / 1000.0, 'or')
+            axes[1].plot(timeAtBrake / 60.0,
+                    self.route.stopLocations[:len(timeAtBrake)] / 1000.0, 'vy')
 
-            axes[2].plot(timeAtStop, speedAtStop, 'or')
-            axes[2].plot(timeAtBrake, speedAtBrake, 'vy')
+            axes[2].plot(timeAtStop / 60.0, speedAtStop, 'or')
+            axes[2].plot(timeAtBrake / 60.0, speedAtBrake, 'vy')
 
         axes[2].legend()
 
-        axes[3].plot(self.time, self.states[:, 2])
-        axes[3].set_ylabel('Energy [J]')
+        kilojoules2foodcal = 1. / 4.184
 
-        axes[4].plot(self.time, power)
+        axes[3].plot(self.time / 60.0, energy)
+        axes[3].set_ylabel('Energy [kJ]')
+        axes[3].grid(True)
+        english = axes[3].twinx()
+        english.axis(np.hstack((axes[3].get_xlim(),
+            np.array(axes[3].get_ylim()) *
+            kilojoules2foodcal)))
+        english.set_ylabel('Energy [cal]')
+
+        watt2hp = 0.00134102209
+
+        axes[4].plot(self.time / 60.0, power)
         axes[4].set_ylabel('Power [W]')
-        axes[4].set_xlabel('Time [s]')
+        axes[4].set_xlabel('Time [min]')
+        axes[4].grid(True)
+        english = axes[4].twinx()
+        english.axis(np.hstack((axes[4].get_xlim(),
+            np.array(axes[4].get_ylim()) *
+            watt2hp)))
+        english.set_ylabel('Power [hp]')
 
         return fig
