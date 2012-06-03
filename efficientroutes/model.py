@@ -422,15 +422,15 @@ class Trip(object):
             try:
                 t, y = next(iterate)
             except sundials.CVodeRootException, info:
-                print '-' * 20
-                print "info", info.SW
-                print "solver", solver.SW
+                #print '-' * 20
+                #print "info", info.SW
+                #print "solver", solver.SW
                 # SW: [brake, stop, speed]
                 # NOTE: The solver.SW can not be overwritten by a list, the
                 # values must be set individually.
                 if info.SW[0] is True:
-                    print "The next stop is at {} meters.".format(self.nextStop)
-                    print "Found brake point at {} meters and speed is {} m/s.".format(info.y[0], info.y[1])
+                    #print "The next stop is at {} meters.".format(self.nextStop)
+                    #print "Found brake point at {} meters and speed is {} m/s.".format(info.y[0], info.y[1])
                     solver.SW[0] = True
                     solver.SW[1] = False
                     solver.SW[2] = False
@@ -440,7 +440,7 @@ class Trip(object):
                     time.append(info.t)
                     stateHistory.append([info.y[0], info.y[1], info.y[2]])
                 elif info.SW[1] is True:
-                    print "The bicyclist has stopped at {} meters, v = {} m/s.".format(info.y[0], info.y[1])
+                    #print "The bicyclist has stopped at {} meters, v = {} m/s.".format(info.y[0], info.y[1])
                     solver.SW[0] = False
                     solver.SW[1] = False
                     solver.SW[2] = False
@@ -449,11 +449,16 @@ class Trip(object):
                     stateHistory.append([info.y[0], 0.0, info.y[2]])
                 elif info.SW[2] is True:
                     speedLimit = self.route.current_speed_limit(info.y[0])
-                    print "Speed {} m/s exceeds the speed limit {} m/s".format(info.y[1],
-                        speedLimit)
-                    solver.SW[0] = False
-                    solver.SW[1] = False
-                    solver.SW[2] = True
+                    #print "Speed {} m/s exceeds the speed limit {} m/s".format(info.y[1],
+                        #speedLimit)
+                    if solver.SW[0] is True:
+                        solver.SW[0] = True
+                        solver.SW[1] = False
+                        solver.SW[2] = False
+                    else:
+                        solver.SW[0] = False
+                        solver.SW[1] = False
+                        solver.SW[2] = True
                     solver.init(info.t, [info.y[0], info.y[1], info.y[2]])
                     time.append(info.t)
                     stateHistory.append([info.y[0], info.y[1], info.y[2]])
@@ -480,7 +485,7 @@ class Trip(object):
         power = np.hstack((0.0, np.diff(self.states[:, 2]) / np.diff(self.time)))
         avgPower = power.mean()
         print 'Total distance traveled: {:1.0f} m'.format(totalDistance)
-        print 'Trip time: {:1.0f} min'.format(self.time[-1] / 60.)
+        print 'Trip time: {:1.1f} min'.format(self.time[-1] / 60.)
         print 'Average speed: {:1.2f} m/s'.format(avgSpeed)
         print 'Total energy spent: {:1.0f} J'.format(totalEnergy)
         print 'Average power: {:1.1f} W'.format(avgPower)
