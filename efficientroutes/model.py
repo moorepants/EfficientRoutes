@@ -422,15 +422,15 @@ class Trip(object):
             try:
                 t, y = next(iterate)
             except sundials.CVodeRootException, info:
-                #print '-' * 20
-                #print "info", info.SW
-                #print "solver", solver.SW
+                print '-' * 20
+                print "info", info.SW
+                print "solver", solver.SW
                 # SW: [brake, stop, speed]
                 # NOTE: The solver.SW can not be overwritten by a list, the
                 # values must be set individually.
                 if info.SW[0] is True:
-                    #print "The next stop is at {} meters.".format(self.nextStop)
-                    #print "Found brake point at {} meters and speed is {} m/s.".format(info.y[0], info.y[1])
+                    print "The next stop is at {} meters.".format(self.nextStop)
+                    print "Found brake point at {} meters and speed is {} m/s.".format(info.y[0], info.y[1])
                     solver.SW[0] = True
                     solver.SW[1] = False
                     solver.SW[2] = False
@@ -440,7 +440,7 @@ class Trip(object):
                     time.append(info.t)
                     stateHistory.append([info.y[0], info.y[1], info.y[2]])
                 elif info.SW[1] is True:
-                    #print "The bicyclist has stopped at {} meters, v = {} m/s.".format(info.y[0], info.y[1])
+                    print "The bicyclist has stopped at {} meters, v = {} m/s.".format(info.y[0], info.y[1])
                     solver.SW[0] = False
                     solver.SW[1] = False
                     solver.SW[2] = False
@@ -448,9 +448,9 @@ class Trip(object):
                     time.append(info.t)
                     stateHistory.append([info.y[0], 0.0, info.y[2]])
                 elif info.SW[2] is True:
-                    #speedLimit = self.route.current_speed_limit(info.y[0])
-                    #print "Speed {} m/s exceeds the speed limit {} m/s".format(info.y[1],
-                        #speedLimit)
+                    speedLimit = self.route.current_speed_limit(info.y[0])
+                    print "Speed {} m/s exceeds the speed limit {} m/s".format(info.y[1],
+                        speedLimit)
                     solver.SW[0] = False
                     solver.SW[1] = False
                     solver.SW[2] = True
