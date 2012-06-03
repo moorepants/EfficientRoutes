@@ -34,6 +34,7 @@ bicycleTrip.stats()
 
 bicycleFig = bicycleTrip.plot()
 bicycleFig.suptitle('Bicycle Route')
+bicycleFig.set_figheight(8.0)
 bicycleFig.savefig('../data/columbia_river_crossing_bicycle.png', dpi=200)
 bicycleFig.show()
 
@@ -52,5 +53,6 @@ autoTrip.stats()
 
 autoFig = autoTrip.plot()
 autoFig.suptitle('Automobile Route')
+autoFig.set_figheight(8.0)
 autoFig.savefig('../data/columbia_river_crossing_auto.png', dpi=200)
 autoFig.show()
