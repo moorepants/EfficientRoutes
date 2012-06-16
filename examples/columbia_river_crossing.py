@@ -56,3 +56,27 @@ autoFig.suptitle('Automobile Route')
 autoFig.set_figheight(8.0)
 autoFig.savefig('../data/columbia_river_crossing_auto.png', dpi=200)
 autoFig.show()
+
+# Load in the data for the automobile path.
+bestRouteData = np.recfromcsv('../data/columbia_river_crossing_best.csv')
+stopLocations = []
+for i, device in enumerate(bestRouteData['traffic_control']):
+    if device != '':
+        stopLocations.append(bestRouteData['distance'][i])
+bestRoute = Route(bestRouteData['distance'],
+        bestRouteData['elevation'], bestRouteData['speed_limit'] - 17.88,
+        stopLocations=np.array(stopLocations))
+
+# Setup and compute the results for the trip across the automobile route.
+bestTrip = Trip(bicyclist, bestRoute)
+bestTrip.solve()
+print "================="
+print "Best route stats:"
+print "================="
+bestTrip.stats()
+
+bestFig = bestTrip.plot()
+bestFig.suptitle('Best Route')
+bestFig.set_figheight(8.0)
+bestFig.savefig('../data/columbia_river_crossing_best.png', dpi=200)
+bestFig.show()
